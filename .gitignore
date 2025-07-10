@@ -8,6 +8,10 @@ wheels/
 
 secret.txt
 *.env
-
-# Virtual environments
-.venv
+.idea/
+*.vscode/
+*.iml
+*.swp
+*.swo
+*.bak
+*.tmp
