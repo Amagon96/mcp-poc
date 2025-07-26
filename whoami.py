@@ -38,7 +38,7 @@ def verify_access_token(token: str) -> AuthInfo:
         # using the access token issued by the authorization flow.
         # Adjust the URL and headers as needed based on your provider's API.
         response = requests.get(
-            "https://dev-u2gjr1qq43hqstd0.us.auth0.com/api/v2/users",
+            "https://dev-u2gjr1qq43hqstd0.us.auth0.com/userinfo",
             headers={"Authorization": f"Bearer {token}"}
         )
         # breakpoint()
@@ -49,9 +49,9 @@ def verify_access_token(token: str) -> AuthInfo:
         # identifies the user. You may need to adjust this based on your provider's API.
         return AuthInfo(
             token=token,
-            subject="user_123", # Replace with the actual user ID from the response
+            subject=json.get("sub"), # Replace with the actual user ID from the response
             issuer=auth_issuer, # Use the configured issuer
-            claims={"result":json}, # Include all claims (JSON fields) returned by the endpoint
+            claims=json, # Include all claims (JSON fields) returned by the endpoint
         )
     # `AuthInfo` is a Pydantic model, so validation errors usually mean the response didn't match
     # the expected structure
@@ -78,6 +78,33 @@ def whoami() -> dict[str, Any]:
         else {"error": "Not authenticated"}
     )
 
+@mcp.tool()
+def food_recommendation() -> dict[str, Any]:
+    """
+    Suggests a healthy food option for the authenticated user.
+    """
+    if not mcp_auth.auth_info or not mcp_auth.auth_info.claims:
+        return {"error": "Not authenticated"}
+    
+    user_email = mcp_auth.auth_info.claims.get("email", "unknown")
+
+    suggestions = [
+        "Grilled salmon with quinoa",
+        "Avocado toast with poached egg",
+        "Greek yogurt with berries",
+        "Chickpea salad with lemon dressing",
+        "Oatmeal with banana and peanut butter"
+    ]
+    
+    index = hash(user_email) % len(suggestions)
+    suggested_food = suggestions[index]
+
+    return {
+        "user": user_email,
+        "suggested_dish": suggested_food,
+        "message": f"Suggested dish for {user_email}: {suggested_food}"
+    }
+
 bearer_auth = Middleware(mcp_auth.bearer_auth_middleware(verify_access_token))
 app = Starlette(
     routes=[
@@ -89,4 +116,5 @@ app = Starlette(
 )
 
 if __name__ == "__main__":
-    app.run(transport="http", host="0.0.0.0", port=8031)
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8031)
